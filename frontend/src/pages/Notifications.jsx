@@ -12,6 +12,19 @@ const RED = "#E24B4A";
 const BLUE = "#2F7BD1";
 const YELLOW = "#C99A1E";
 
+const authHeaders = () => {
+  const token = localStorage.getItem("adminToken");
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+const authOpts = (extra = {}) => ({
+  credentials: "include",
+  headers: authHeaders(),
+  ...extra,
+});
+
 const TYPE_STYLES = {
   info:    { color: BLUE,   bg: "#eaf2fb", icon: "ti-info-circle" },
   success: { color: GREEN,  bg: "#eef6e6", icon: "ti-circle-check" },
@@ -565,7 +578,7 @@ export default function Notifications() {
   };
 
   useEffect(() => {
-    fetch(`${API}/api/notifications`, { credentials: "include" })
+    fetch(`${API}/api/notifications`, authOpts())
       .then((r) => r.ok ? r.json() : null)
       .then((data) => { if (data?.notifications) setNotifications(data.notifications); })
       .catch(() => {})
@@ -589,19 +602,19 @@ export default function Notifications() {
       if (payload.expiryDate === "") payload.expiryDate = null;
 
       if (notif._isNew) {
-        const r = await fetch(`${API}/api/notifications`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          credentials: "include", body: JSON.stringify(payload),
-        });
+        const r = await fetch(`${API}/api/notifications`, authOpts({
+  method: "POST",
+  body: JSON.stringify(payload),
+}));
         if (!r.ok) throw new Error();
         const data = await r.json();
         setNotifications((prev) => prev.map((n) => n._id === notif._id ? data.notification : n));
         showToast(`"${notif.title || "Notification"}" created ✓`);
       } else {
-        const r = await fetch(`${API}/api/notifications/${notif._id}`, {
-          method: "PUT", headers: { "Content-Type": "application/json" },
-          credentials: "include", body: JSON.stringify(payload),
-        });
+        const r = await fetch(`${API}/api/notifications/${notif._id}`, authOpts({
+  method: "PUT",
+  body: JSON.stringify(payload),
+}));
         if (!r.ok) throw new Error();
         const data = await r.json();
         setNotifications((prev) => prev.map((n) => n._id === notif._id ? data.notification : n));
@@ -618,7 +631,7 @@ export default function Notifications() {
     if (notif._isNew) { setNotifications((prev) => prev.filter((n) => n._id !== notif._id)); return; }
     setDeletingId(notif._id);
     try {
-      const r = await fetch(`${API}/api/notifications/${notif._id}`, { method: "DELETE", credentials: "include" });
+      const r = await fetch(`${API}/api/notifications/${notif._id}`, authOpts({ method: "DELETE" }));
       if (!r.ok) throw new Error();
       setNotifications((prev) => prev.filter((n) => n._id !== notif._id));
       showToast("Notification deleted");

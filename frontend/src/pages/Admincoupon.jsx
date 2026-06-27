@@ -8,8 +8,20 @@ const ORANGE_L = "#fdf3ed";
 const RED = "#E24B4A";
 const GREEN = "#63992E";
 const GRAY = "#888";
-
 const rupee = (n) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
+
+const authHeaders = () => {
+  const token = localStorage.getItem("adminToken");
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+const authOpts = (extra = {}) => ({
+  credentials: "include",
+  headers: authHeaders(),
+  ...extra,
+});
 
 const COUPON_STATUS_COLORS = {
     Active: { bg: "#EAF3DE", text: "#3B6D11" },
@@ -119,11 +131,10 @@ export default function AdminCoupon() {
     }, []);
 
     const load = () => {
-        const opts = { credentials: "include", headers: { "Content-Type": "application/json" } };
         Promise.all([
-            fetch(`${API}/api/coupons`, opts).then(r => r.ok ? r.json() : []),
-            fetch(`${API}/api/orders`, opts).then(r => r.ok ? r.json() : { orders: [] }),
-        ]).then(([cp, ordRes]) => {
+  fetch(`${API}/api/coupons`, authOpts()).then(r => r.ok ? r.json() : []),
+  fetch(`${API}/api/orders`, authOpts()).then(r => r.ok ? r.json() : { orders: [] }),
+]).then(([cp, ordRes]) => {
             setCoupons(Array.isArray(cp) ? cp : []);
             setOrders(Array.isArray(ordRes.orders) ? ordRes.orders : []);
             setLoading(false);
@@ -175,12 +186,10 @@ export default function AdminCoupon() {
 
     /* ─── actions ────────────────────────────────── */
     const toggleCouponStatus = async (coupon) => {
-        const r = await fetch(`${API}/api/coupons/${coupon._id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ isActive: !coupon.isActive }),
-        });
+        const r = await fetch(`${API}/api/coupons/${coupon._id}`, authOpts({
+  method: "PATCH",
+  body: JSON.stringify({ isActive: !coupon.isActive }),
+}));
         if (r.ok) load();
     };
 
@@ -205,12 +214,10 @@ export default function AdminCoupon() {
             const url = editingId ? `${API}/api/coupons/${editingId}` : `${API}/api/coupons`;
             const method = editingId ? "PATCH" : "POST";
 
-            const r = await fetch(url, {
-                method,
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify(payload),
-            });
+            const r = await fetch(url, authOpts({
+  method,
+  body: JSON.stringify(payload),
+}));
             const data = await r.json().catch(() => ({}));
             if (r.ok) {
                 cancelForm();
@@ -225,7 +232,7 @@ export default function AdminCoupon() {
 
     const removeCoupon = async (id) => {
         if (!window.confirm("Remove this coupon?")) return;
-        const r = await fetch(`${API}/api/coupons/${id}`, { method: "DELETE", credentials: "include" });
+        const r = await fetch(`${API}/api/coupons/${id}`, authOpts({ method: "DELETE" }));
         if (r.ok) load();
     };
 

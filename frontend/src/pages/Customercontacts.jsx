@@ -15,6 +15,19 @@ function getInitials(name) {
 
 const PAGE_SIZE = 12;
 
+const authHeaders = () => {
+  const token = localStorage.getItem("adminToken");
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+const authOpts = (extra = {}) => ({
+  credentials: "include",
+  headers: authHeaders(),
+  ...extra,
+});
+
 /* ─── Contact card (mobile view of a row) ─────── */
 function ContactCard({ c, checked, onToggle, onCopy, onDelete }) {
   return (
@@ -87,7 +100,7 @@ export default function CustomerContacts() {
   }, []);
 
   useEffect(() => {
-    fetch(`${API}/api/connect`, { credentials: "include" })
+    fetch(`${API}/api/connect`, authOpts())
       .then(r => r.ok ? r.json() : [])
       .then(data => setContacts(Array.isArray(data) ? data : data.data || []))
       .catch(() => { })
@@ -98,15 +111,15 @@ export default function CustomerContacts() {
 
   const handleDelete = async (id) => {
     if (!window.confirm("Remove this subscriber?")) return;
-    const r = await fetch(`${API}/api/connect/${id}`, { method: "DELETE", credentials: "include" });
+    const r = await fetch(`${API}/api/connect/${id}`, authOpts({ method: "DELETE" }));
     if (r.ok) setContacts(prev => prev.filter(c => c._id !== id));
   };
 
   const handleDeleteSelected = async () => {
     if (!window.confirm(`Remove ${selected.size} selected subscribers?`)) return;
     await Promise.all([...selected].map(id =>
-      fetch(`${API}/api/connect/${id}`, { method: "DELETE", credentials: "include" })
-    ));
+  fetch(`${API}/api/connect/${id}`, authOpts({ method: "DELETE" }))
+));
     setContacts(prev => prev.filter(c => !selected.has(c._id)));
     setSelected(new Set());
   };

@@ -10,6 +10,19 @@ const GRAY     = "#888";
 
 const PAGE_SIZE = 10;
 
+const authHeaders = () => {
+  const token = localStorage.getItem("adminToken");
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+const authOpts = (extra = {}) => ({
+  credentials: "include",
+  headers: authHeaders(),
+  ...extra,
+});
+
 const AUTH_LABELS = {
   otp:      { label: "OTP",      bg: "#e8f4fd", text: "#185FA5" },
   password: { label: "Password", bg: "#f3e8fd", text: "#6B21A8" },
@@ -363,11 +376,10 @@ export default function AllCustomers() {
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    const opts = { credentials: "include" };
     Promise.all([
-      fetch(`${API}/api/users?limit=200`, opts).then(r => r.ok ? r.json() : []),
-      fetch(`${API}/api/orders`, opts).then(r => r.ok ? r.json() : []),
-    ]).then(([cust, ord]) => {
+  fetch(`${API}/api/users?limit=200`, authOpts()).then(r => r.ok ? r.json() : []),
+  fetch(`${API}/api/orders`, authOpts()).then(r => r.ok ? r.json() : []),
+]).then(([cust, ord]) => {
       setCustomers(Array.isArray(cust) ? cust : cust.users || []);
       setOrders(Array.isArray(ord) ? ord : ord.orders || []);
     }).catch(() => {}).finally(() => setLoading(false));
@@ -377,7 +389,7 @@ export default function AllCustomers() {
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this customer?")) return;
-    const r = await fetch(`${API}/api/users/${id}`, { method: "DELETE", credentials: "include" });
+    const r = await fetch(`${API}/api/users/${id}`, authOpts({ method: "DELETE" }));
     if (r.ok) setCustomers(prev => prev.filter(c => c._id !== id));
   };
 

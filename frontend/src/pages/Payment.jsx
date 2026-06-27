@@ -8,8 +8,33 @@ const ORANGE_L = "#fdf3ed";
 const GRAY     = "#888";
 const RED      = "#E24B4A";
 const GREEN    = "#63992E";
-
 const rupee = (n) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
+
+const authHeaders = () => {
+  const token = localStorage.getItem("adminToken");
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+const authOpts = (extra = {}) => ({
+  credentials: "include",
+  headers: authHeaders(),
+  ...extra,
+});const rupee = (n) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
+
+const authHeaders = () => {
+  const token = localStorage.getItem("adminToken");
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+const authOpts = (extra = {}) => ({
+  credentials: "include",
+  headers: authHeaders(),
+  ...extra,
+});
 
 const PAYMENT_STATUS_COLORS = {
   Paid:      { bg: "#e8fdf0", text: "#0F6E56" },
@@ -60,7 +85,7 @@ async function exportCSV(filters) {
       page: 1,
       ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
     });
-    const r = await fetch(`${API}/api/payments?${params}`, { credentials: "include" });
+    const r = await fetch(`${API}/api/payments?${params}`, authOpts());
     const data = r.ok ? await r.json() : { payments: [] };
     const payments = data.payments || [];
 
@@ -164,7 +189,7 @@ export default function Payment() {
   }, []);
 
   useEffect(() => {
-    fetch(`${API}/api/payments/summary`, { credentials: "include" })
+    fetch(`${API}/api/payments/summary`, authOpts())
       .then(r => r.ok ? r.json() : null)
       .then(setSummary)
       .catch(() => {});
@@ -177,7 +202,7 @@ export default function Payment() {
       limit,
       ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
     });
-    fetch(`${API}/api/payments?${params}`, { credentials: "include" })
+    fetch(`${API}/api/payments?${params}`, authOpts())
       .then(r => r.ok ? r.json() : { payments: [], total: 0 })
       .then(data => {
         setPayments(data.payments || []);
@@ -205,10 +230,10 @@ export default function Payment() {
     if (reason === null) return;
     setRefundingId(p._id);
     try {
-      const r = await fetch(`${API}/api/payments/${p._id}/refund`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        credentials: "include", body: JSON.stringify({ reason }),
-      });
+      const r = await fetch(`${API}/api/payments/${p._id}/refund`, authOpts({
+  method: "PATCH",
+  body: JSON.stringify({ reason }),
+}));
       if (r.ok) {
         const { payment } = await r.json();
         setPayments(prev => prev.map(x => x._id === payment._id ? payment : x));

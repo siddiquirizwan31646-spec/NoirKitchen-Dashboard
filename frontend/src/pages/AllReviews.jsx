@@ -6,8 +6,20 @@ const ORANGE   = "#E07B39";
 const ORANGE_L = "#fdf3ed";
 const RED      = "#E24B4A";
 const GRAY     = "#888";
-
 const RATING_OPTIONS = ["All", "5", "4", "3", "2", "1"];
+
+const authHeaders = () => {
+  const token = localStorage.getItem("adminToken");
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+const authOpts = (extra = {}) => ({
+  credentials: "include",
+  headers: authHeaders(),
+  ...extra,
+});
 
 function Stars({ rating }) {
   return (
@@ -89,7 +101,7 @@ export default function AllReviews() {
   }, []);
 
   useEffect(() => {
-    fetch(`${API}/api/reviews`, { credentials: "include" })
+    fetch(`${API}/api/reviews`, authOpts())
       .then(r => r.ok ? r.json() : [])
       .then(data => setReviews(Array.isArray(data) ? data : data.reviews || []))
       .catch(() => {})
@@ -100,7 +112,7 @@ export default function AllReviews() {
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this review?")) return;
-    const r = await fetch(`${API}/api/reviews/${id}`, { method: "DELETE", credentials: "include" });
+    const r = await fetch(`${API}/api/reviews/${id}`, authOpts({ method: "DELETE" }));  
     if (r.ok) setReviews(prev => prev.filter(rv => rv._id !== id));
   };
 

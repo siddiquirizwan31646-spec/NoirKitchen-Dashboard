@@ -6,8 +6,20 @@ const ORANGE   = "#E07B39";
 const ORANGE_L = "#fdf3ed";
 const RED      = "#E24B4A";
 const GRAY     = "#888";
-
 const PAGE_SIZE = 10;
+
+const authHeaders = () => {
+  const token = localStorage.getItem("adminToken");
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+const authOpts = (extra = {}) => ({
+  credentials: "include",
+  headers: authHeaders(),
+  ...extra,
+});
 
 function useIsMobile() {
   const [mobile, setMobile] = useState(window.innerWidth <= 768);
@@ -31,9 +43,9 @@ export default function AllMessages() {
     const fetchData = async () => {
       try {
         const [msgRes, userRes] = await Promise.all([
-          fetch(`${API}/api/contact`, { credentials: "include" }),
-          fetch(`${API}/api/users`,   { credentials: "include" }),
-        ]);
+  fetch(`${API}/api/contact`, authOpts()),
+  fetch(`${API}/api/users`,   authOpts()),
+]);
         const msgData  = msgRes.ok  ? await msgRes.json()  : [];
         const userData = userRes.ok ? await userRes.json() : [];
         setMessages(Array.isArray(msgData) ? msgData : msgData.messages || []);
@@ -54,7 +66,7 @@ export default function AllMessages() {
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this message?")) return;
-    const r = await fetch(`${API}/api/contact/${id}`, { method: "DELETE", credentials: "include" });
+    const r = await fetch(`${API}/api/contact/${id}`, authOpts({ method: "DELETE" }));
     if (r.ok) setMessages(prev => prev.filter(m => m._id !== id));
   };
 

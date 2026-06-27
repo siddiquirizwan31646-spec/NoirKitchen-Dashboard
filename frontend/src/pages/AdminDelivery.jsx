@@ -10,6 +10,19 @@ const GREEN = "#63992E";
 const GRAY = "#888";
 
 const rupee = (n) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
+
+const authHeaders = () => {
+  const token = localStorage.getItem("adminToken");
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+const authOpts = (extra = {}) => ({
+  credentials: "include",
+  headers: authHeaders(),
+  ...extra,
+});
 const ORDER_STATUS_COLORS = {
     Placed: { bg: "#e8f4fd", text: "#185FA5" },
     Preparing: { bg: "#FFF8E1", text: "#BA7517" },
@@ -241,11 +254,10 @@ export default function AdminDelivery() {
     }, []);
 
     const load = () => {
-        const opts = { credentials: "include", headers: { "Content-Type": "application/json" } };
         Promise.all([
-            fetch(`${API}/api/delivery-agents`, opts).then(r => r.ok ? r.json() : []),
-            fetch(`${API}/api/orders`, opts).then(r => r.ok ? r.json() : { orders: [] }),
-        ]).then(([ag, ordRes]) => {
+  fetch(`${API}/api/delivery-agents`, authOpts()).then(r => r.ok ? r.json() : []),
+  fetch(`${API}/api/orders`, authOpts()).then(r => r.ok ? r.json() : { orders: [] }),
+]).then(([ag, ordRes]) => {
             setAgents(Array.isArray(ag) ? ag : []);
             setDeliveries(Array.isArray(ordRes.orders) ? ordRes.orders : []);
             setLoading(false);
@@ -267,12 +279,10 @@ export default function AdminDelivery() {
     /* ─── actions ────────────────────────────────── */
     const assignAgent = async (orderId, agentId) => {
         if (!agentId) return;
-        const r = await fetch(`${API}/api/orders/${orderId}/assign-partner`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ agentId }),
-        });
+        const r = await fetch(`${API}/api/orders/${orderId}/assign-partner`, authOpts({
+  method: "PATCH",
+  body: JSON.stringify({ agentId }),
+}));
         if (r.ok) load();
     };
 
@@ -285,12 +295,10 @@ export default function AdminDelivery() {
         }
         setSavingAgent(true);
         try {
-            const r = await fetch(`${API}/api/delivery-agents`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify(newAgent),
-            });
+            const r = await fetch(`${API}/api/delivery-agents`, authOpts({
+  method: "POST",
+  body: JSON.stringify(newAgent),
+}));
             const data = await r.json().catch(() => ({}));
             if (r.ok) {
                 setNewAgent({ name: "", phone: "", email: "", vehicleType: "Bike", vehicleNumber: "" });
@@ -306,7 +314,7 @@ export default function AdminDelivery() {
 
     const removeAgent = async (id) => {
         if (!window.confirm("Remove this agent?")) return;
-        const r = await fetch(`${API}/api/delivery-agents/${id}`, { method: "DELETE", credentials: "include" });
+        const r = await fetch(`${API}/api/delivery-agents/${id}`, authOpts({ method: "DELETE" }));
         if (r.ok) load();
     };
 
