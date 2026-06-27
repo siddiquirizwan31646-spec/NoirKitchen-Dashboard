@@ -37,10 +37,24 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
+// ── CORS ──────────────────────────────────────────────────────────────────────
+// Allows Vercel frontend + localhost dev. Add any extra origins to the array.
+const ALLOWED_ORIGINS = [
+  process.env.FRONTEND_URL,          // e.g. https://noir-kitchen-dashboard.vercel.app
+  "http://localhost:5173",
+  "http://localhost:3000",
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, Postman, curl)
+    if (!origin) return callback(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS blocked: ${origin}`));
+  },
   credentials: true,
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -48,24 +62,24 @@ app.use(passport.initialize());
 
 connectDB();
 
-// Public routes
-app.use("/api/auth", authRoutes);
-app.use("/api/menu", menuRoutes);
-app.use("/api/cart", cartRoutes);
+// ── Public routes ─────────────────────────────────────────────────────────────
+app.use("/api/auth",     authRoutes);
+app.use("/api/menu",     menuRoutes);
+app.use("/api/cart",     cartRoutes);
+app.use("/api/webcontent", require("./routes/webcontent")); // public — needed by main site
 
-// Customer routes
+// ── Customer routes ───────────────────────────────────────────────────────────
 app.use("/api/orders",     protect, orderRoutes);
 app.use("/api/reviews",    protect, reviewRoutes);
 app.use("/api/contact",    protect, contactRoutes);
 app.use("/api/deliveries", protect, deliveryRoutes);
 app.use("/api/payments",   protect, require("./routes/payments"));
 
-// Admin routes
+// ── Admin routes ──────────────────────────────────────────────────────────────
 app.use("/api/users",           protect, requireAdmin, userRoutes);
 app.use("/api/chefs",           protect, requireAdmin, chefRoutes);
 app.use("/api/moments",         protect, requireAdmin, momentRoutes);
 app.use("/api/content",         protect, requireAdmin, contentRoutes);
-app.use("/api/webcontent",      protect, requireAdmin, require("./routes/webcontent"));
 app.use("/api/delivery-agents", protect, requireAdmin, deliveryAgentRoutes);
 app.use("/api/assign-orders",   protect, requireAdmin, assignOrderRoutes);
 app.use("/api/connect",         protect, requireAdmin, connectRoutes);
