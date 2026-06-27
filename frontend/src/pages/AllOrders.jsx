@@ -9,6 +9,20 @@ const GRAY = "#888";
 
 const rupee = (n) => `₹${Number(n).toLocaleString("en-IN")}`;
 
+// ── Auth helper ──────────────────────────────────────────────────────────────
+const authHeaders = () => {
+  const token = localStorage.getItem("adminToken");
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+const authOpts = (extra = {}) => ({
+  credentials: "include",
+  headers: authHeaders(),
+  ...extra,
+});
+
 const STATUS_COLORS = {
   Placed: { bg: "#e8f4fd", text: "#185FA5" },
   Preparing: { bg: "#FFF8E1", text: "#BA7517" },
@@ -18,7 +32,6 @@ const STATUS_COLORS = {
 };
 const ORDER_STATUSES = ["Placed", "Preparing", "Out for Delivery", "Delivered", "Cancelled"];
 
-/* ─── responsive hook ─────────────────────────── */
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   useEffect(() => {
@@ -29,7 +42,6 @@ function useIsMobile() {
   return isMobile;
 }
 
-/* ─── Discount badge ──────────────────────────── */
 function DiscountBadge({ order }) {
   if (!order.discountAmount || order.discountAmount <= 0) {
     return <span style={{ color: "#ccc" }}>—</span>;
@@ -55,7 +67,6 @@ function DiscountBadge({ order }) {
   );
 }
 
-/* ─── Cancel modal ────────────────────────────── */
 function CancelReasonModal({ order, onClose, onConfirm }) {
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -84,7 +95,6 @@ function CancelReasonModal({ order, onClose, onConfirm }) {
           width: "100%", maxWidth: "520px", boxShadow: "0 -4px 30px rgba(0,0,0,0.15)",
         }}
       >
-        {/* drag handle */}
         <div style={{ width: "36px", height: "4px", background: "#e5e5e3", borderRadius: "2px", margin: "0 auto 18px" }} />
         <h3 style={{ margin: "0 0 4px", fontSize: "17px", fontWeight: "800", color: "#1a1a1a" }}>Cancel Order</h3>
         <p style={{ margin: "0 0 16px", fontSize: "12px", color: GRAY }}>
@@ -134,7 +144,6 @@ function CancelReasonModal({ order, onClose, onConfirm }) {
   );
 }
 
-/* ─── Status select ───────────────────────────── */
 function OrderStatusSelect({ orderId, current, onUpdate, onCancelRequest }) {
   const [val, setVal] = useState(current);
   const [saving, setSaving] = useState(false);
@@ -146,8 +155,7 @@ function OrderStatusSelect({ orderId, current, onUpdate, onCancelRequest }) {
     try {
       const r = await fetch(`${API}/api/orders/${orderId}/status`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        ...authOpts(),
         body: JSON.stringify({ orderStatus: newStatus }),
       });
       if (r.ok) { setVal(newStatus); onUpdate?.(orderId, newStatus); }
@@ -172,10 +180,7 @@ function OrderStatusSelect({ orderId, current, onUpdate, onCancelRequest }) {
     );
   }
 
-  // These statuses can only be set by the delivery system, not manually
   const BLOCKED = ["Out for Delivery", "Delivered"];
-
-  // If current status is already a blocked one, just show a read-only badge
   if (BLOCKED.includes(val)) {
     return (
       <span style={{
@@ -209,7 +214,6 @@ function OrderStatusSelect({ orderId, current, onUpdate, onCancelRequest }) {
   );
 }
 
-/* ─── Mobile Order Card ───────────────────────── */
 function OrderCard({ order, onNavigate, onMarkSeen, onCancelRequest, onStatusUpdate }) {
   return (
     <div
@@ -224,7 +228,6 @@ function OrderCard({ order, onNavigate, onMarkSeen, onCancelRequest, onStatusUpd
         borderLeft: order.isNewOrder ? `3px solid ${ORANGE}` : "1px solid #f0ece8",
       }}
     >
-      {/* Row 1: ID + NEW badge + Date */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
           {order.isNewOrder && (
@@ -248,7 +251,6 @@ function OrderCard({ order, onNavigate, onMarkSeen, onCancelRequest, onStatusUpd
         </span>
       </div>
 
-      {/* Row 2: Customer + Phone */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "8px" }}>
         <div style={{ minWidth: 0 }}>
           <p style={{ fontSize: "14px", fontWeight: "700", color: "#1a1a1a", margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -270,7 +272,6 @@ function OrderCard({ order, onNavigate, onMarkSeen, onCancelRequest, onStatusUpd
         </div>
       </div>
 
-      {/* Row 3: Item + Status */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
         <p style={{ fontSize: "12px", color: "#555", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
           {order.itemName}{order.quantity > 1 ? ` ×${order.quantity}` : ""}
@@ -288,7 +289,6 @@ function OrderCard({ order, onNavigate, onMarkSeen, onCancelRequest, onStatusUpd
   );
 }
 
-/* ─── Main Page ───────────────────────────────── */
 const PAGE_SIZE = 10;
 
 export default function AllOrders() {
@@ -304,12 +304,13 @@ export default function AllOrders() {
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
-  fetch(`${API}/api/orders?limit=10000`, { credentials: "include" })
-    .then(r => r.ok ? r.json() : [])
-    .then(data => setOrders(Array.isArray(data) ? data : data.orders || []))
-    .catch(() => { })
-    .finally(() => setLoading(false));
-}, []);
+    // ✅ Send Authorization header so backend accepts the request
+    fetch(`${API}/api/orders?limit=10000`, authOpts())
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setOrders(Array.isArray(data) ? data : data.orders || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
   useEffect(() => { setPage(1); }, [search, statusFilter]);
 
@@ -320,7 +321,10 @@ export default function AllOrders() {
   const markSeen = async (orderId) => {
     setOrders(prev => prev.map(o => o._id === orderId ? { ...o, isNewOrder: false } : o));
     try {
-      await fetch(`${API}/api/orders/${orderId}/mark-seen`, { method: "PATCH", credentials: "include" });
+      await fetch(`${API}/api/orders/${orderId}/mark-seen`, {
+        method: "PATCH",
+        ...authOpts(),
+      });
     } catch (err) { console.error("mark-seen error:", err); }
   };
 
@@ -334,8 +338,7 @@ export default function AllOrders() {
     try {
       const r = await fetch(`${API}/api/orders/${cancelOrder._id}/status`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        ...authOpts(),
         body: JSON.stringify({ orderStatus: "Cancelled", cancelReason: reason }),
       });
       if (r.ok) { handleStatusUpdate(cancelOrder._id, "Cancelled"); setCancelOrder(null); }
@@ -378,8 +381,6 @@ export default function AllOrders() {
   );
 
   const pad = isMobile ? "16px" : "28px 32px";
-
-  /* ── STATUS PILLS (mobile quick-filter) ── */
   const statusCounts = {};
   ORDER_STATUSES.forEach(s => { statusCounts[s] = orders.filter(o => o.orderStatus === s).length; });
 
@@ -387,7 +388,6 @@ export default function AllOrders() {
     <div style={{ flex: 1, background: "#fafaf8", minHeight: "100vh", overflowY: "auto" }}>
       <div style={{ padding: pad, maxWidth: "1400px" }}>
 
-        {/* ── Header ── */}
         <div style={{ marginBottom: isMobile ? "14px" : "20px" }}>
           <button
             onClick={() => navigate("/admin")}
@@ -403,7 +403,6 @@ export default function AllOrders() {
                 {statusFilter !== "All" && ` · ${statusFilter}`}
               </p>
             </div>
-            {/* Mobile: filter toggle button */}
             {isMobile && (
               <button
                 onClick={() => setShowFilters(f => !f)}
@@ -418,17 +417,13 @@ export default function AllOrders() {
                 <i className="ti ti-filter" aria-hidden />
                 Filter
                 {statusFilter !== "All" && (
-                  <span style={{
-                    width: "6px", height: "6px", borderRadius: "50%",
-                    background: showFilters ? "#fff" : ORANGE, flexShrink: 0,
-                  }} />
+                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: showFilters ? "#fff" : ORANGE, flexShrink: 0 }} />
                 )}
               </button>
             )}
           </div>
         </div>
 
-        {/* ── Filters (desktop always visible, mobile toggleable) ── */}
         {(!isMobile || showFilters) && (
           <div style={{ marginBottom: "16px" }}>
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: isMobile ? "10px" : "0" }}>
@@ -460,41 +455,28 @@ export default function AllOrders() {
           </div>
         )}
 
-        {/* ── Mobile: status pill strip ── */}
         {isMobile && (
-          <div style={{
-            display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "4px",
-            marginBottom: "14px", scrollbarWidth: "none",
-          }}>
+          <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "4px", marginBottom: "14px", scrollbarWidth: "none" }}>
             <style>{`::-webkit-scrollbar{display:none}`}</style>
             {["All", ...ORDER_STATUSES].map(s => {
               const active = statusFilter === s;
               const count = s === "All" ? orders.length : statusCounts[s];
               return (
-                <button
-                  key={s}
-                  onClick={() => setStatusFilter(s)}
-                  style={{
-                    flexShrink: 0, padding: "7px 14px", borderRadius: "20px", border: "none",
-                    background: active ? ORANGE : "#fff",
-                    color: active ? "#fff" : "#555",
-                    fontSize: "12px", fontWeight: "600", cursor: "pointer",
-                    boxShadow: active ? "none" : "0 0 0 1px #f0ece8",
-                    display: "flex", alignItems: "center", gap: "5px",
-                  }}
-                >
-                  {s === "All" ? "All" : s}
-                  <span style={{
-                    fontSize: "10px", fontWeight: "700",
-                    color: active ? "rgba(255,255,255,0.8)" : GRAY,
-                  }}>{count}</span>
+                <button key={s} onClick={() => setStatusFilter(s)} style={{
+                  flexShrink: 0, padding: "7px 14px", borderRadius: "20px", border: "none",
+                  background: active ? ORANGE : "#fff", color: active ? "#fff" : "#555",
+                  fontSize: "12px", fontWeight: "600", cursor: "pointer",
+                  boxShadow: active ? "none" : "0 0 0 1px #f0ece8",
+                  display: "flex", alignItems: "center", gap: "5px",
+                }}>
+                  {s}
+                  <span style={{ fontSize: "10px", fontWeight: "700", color: active ? "rgba(255,255,255,0.8)" : GRAY }}>{count}</span>
                 </button>
               );
             })}
           </div>
         )}
 
-        {/* ── Desktop: Table ── */}
         {!isMobile && (
           <div style={{ background: "#fff", border: "1px solid #f0ece8", borderRadius: "14px", padding: "20px" }}>
             <div style={{ overflowX: "auto" }}>
@@ -502,9 +484,7 @@ export default function AllOrders() {
                 <thead>
                   <tr style={{ borderBottom: "1px solid #f0ece8" }}>
                     {["Order ID", "Customer", "Phone", "Items", "Amount", "Discount", "Status", "Date"].map(h => (
-                      <th key={h} style={{ textAlign: "left", padding: "10px", color: GRAY, fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                        {h}
-                      </th>
+                      <th key={h} style={{ textAlign: "left", padding: "10px", color: GRAY, fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -520,13 +500,7 @@ export default function AllOrders() {
                       <td style={{ padding: "12px 10px", fontWeight: "600", color: ORANGE }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                           {o.isNewOrder && (
-                            <span
-                              onClick={(e) => { e.stopPropagation(); markSeen(o._id); }}
-                              title="Mark as seen"
-                              style={{ fontSize: "9px", fontWeight: "800", color: "#fff", background: ORANGE, borderRadius: "20px", padding: "2px 7px", cursor: "pointer", letterSpacing: "0.3px", flexShrink: 0 }}
-                            >
-                              NEW
-                            </span>
+                            <span onClick={(e) => { e.stopPropagation(); markSeen(o._id); }} style={{ fontSize: "9px", fontWeight: "800", color: "#fff", background: ORANGE, borderRadius: "20px", padding: "2px 7px", cursor: "pointer", letterSpacing: "0.3px", flexShrink: 0 }}>NEW</span>
                           )}
                           #{o._id?.slice(-8).toUpperCase()}
                         </div>
@@ -545,43 +519,26 @@ export default function AllOrders() {
                     </tr>
                   ))}
                   {pageOrders.length === 0 && (
-                    <tr>
-                      <td colSpan={8} style={{ padding: "30px", textAlign: "center", color: GRAY }}>No orders match your filters</td>
-                    </tr>
+                    <tr><td colSpan={8} style={{ padding: "30px", textAlign: "center", color: GRAY }}>No orders match your filters</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
-
             {totalPages > 1 && (
               <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "12px", marginTop: "18px" }}>
-                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                  style={{ padding: "6px 14px", fontSize: "12px", borderRadius: "8px", border: "1px solid #f0ece8", background: "#fff", color: page === 1 ? "#ccc" : "#1a1a1a", cursor: page === 1 ? "default" : "pointer" }}>
-                  Prev
-                </button>
+                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ padding: "6px 14px", fontSize: "12px", borderRadius: "8px", border: "1px solid #f0ece8", background: "#fff", color: page === 1 ? "#ccc" : "#1a1a1a", cursor: page === 1 ? "default" : "pointer" }}>Prev</button>
                 <span style={{ fontSize: "12px", color: GRAY }}>Page {page} of {totalPages}</span>
-                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                  style={{ padding: "6px 14px", fontSize: "12px", borderRadius: "8px", border: "1px solid #f0ece8", background: "#fff", color: page === totalPages ? "#ccc" : "#1a1a1a", cursor: page === totalPages ? "default" : "pointer" }}>
-                  Next
-                </button>
+                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ padding: "6px 14px", fontSize: "12px", borderRadius: "8px", border: "1px solid #f0ece8", background: "#fff", color: page === totalPages ? "#ccc" : "#1a1a1a", cursor: page === totalPages ? "default" : "pointer" }}>Next</button>
               </div>
             )}
           </div>
         )}
 
-        {/* ── Mobile: Card List ── */}
         {isMobile && (
           <>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               {pageOrders.map(o => (
-                <OrderCard
-                  key={o._id}
-                  order={o}
-                  onNavigate={(id) => navigate(`/admin/order/${id}`)}
-                  onMarkSeen={markSeen}
-                  onCancelRequest={handleCancelRequest}
-                  onStatusUpdate={handleStatusUpdate}
-                />
+                <OrderCard key={o._id} order={o} onNavigate={(id) => navigate(`/admin/order/${id}`)} onMarkSeen={markSeen} onCancelRequest={handleCancelRequest} onStatusUpdate={handleStatusUpdate} />
               ))}
               {pageOrders.length === 0 && (
                 <div style={{ textAlign: "center", padding: "40px 20px", color: GRAY }}>
@@ -590,40 +547,11 @@ export default function AllOrders() {
                 </div>
               )}
             </div>
-
-            {/* Mobile pagination */}
             {totalPages > 1 && (
-              <div style={{
-                display: "flex", justifyContent: "space-between", alignItems: "center",
-                gap: "12px", marginTop: "16px", padding: "12px 0",
-              }}>
-                <button
-                  onClick={() => { setPage(p => Math.max(1, p - 1)); window.scrollTo(0, 0); }}
-                  disabled={page === 1}
-                  style={{
-                    flex: 1, padding: "12px", fontSize: "14px", borderRadius: "10px",
-                    border: "1px solid #f0ece8", background: "#fff",
-                    color: page === 1 ? "#ccc" : "#1a1a1a",
-                    cursor: page === 1 ? "default" : "pointer", fontWeight: "600",
-                  }}
-                >
-                  ← Prev
-                </button>
-                <span style={{ fontSize: "13px", color: GRAY, whiteSpace: "nowrap" }}>
-                  {page} / {totalPages}
-                </span>
-                <button
-                  onClick={() => { setPage(p => Math.min(totalPages, p + 1)); window.scrollTo(0, 0); }}
-                  disabled={page === totalPages}
-                  style={{
-                    flex: 1, padding: "12px", fontSize: "14px", borderRadius: "10px",
-                    border: "1px solid #f0ece8", background: "#fff",
-                    color: page === totalPages ? "#ccc" : "#1a1a1a",
-                    cursor: page === totalPages ? "default" : "pointer", fontWeight: "600",
-                  }}
-                >
-                  Next →
-                </button>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", marginTop: "16px", padding: "12px 0" }}>
+                <button onClick={() => { setPage(p => Math.max(1, p - 1)); window.scrollTo(0, 0); }} disabled={page === 1} style={{ flex: 1, padding: "12px", fontSize: "14px", borderRadius: "10px", border: "1px solid #f0ece8", background: "#fff", color: page === 1 ? "#ccc" : "#1a1a1a", cursor: page === 1 ? "default" : "pointer", fontWeight: "600" }}>← Prev</button>
+                <span style={{ fontSize: "13px", color: GRAY, whiteSpace: "nowrap" }}>{page} / {totalPages}</span>
+                <button onClick={() => { setPage(p => Math.min(totalPages, p + 1)); window.scrollTo(0, 0); }} disabled={page === totalPages} style={{ flex: 1, padding: "12px", fontSize: "14px", borderRadius: "10px", border: "1px solid #f0ece8", background: "#fff", color: page === totalPages ? "#ccc" : "#1a1a1a", cursor: page === totalPages ? "default" : "pointer", fontWeight: "600" }}>Next →</button>
               </div>
             )}
           </>
@@ -631,11 +559,7 @@ export default function AllOrders() {
       </div>
 
       {cancelOrder && (
-        <CancelReasonModal
-          order={cancelOrder}
-          onClose={() => setCancelOrder(null)}
-          onConfirm={handleConfirmCancel}
-        />
+        <CancelReasonModal order={cancelOrder} onClose={() => setCancelOrder(null)} onConfirm={handleConfirmCancel} />
       )}
     </div>
   );
