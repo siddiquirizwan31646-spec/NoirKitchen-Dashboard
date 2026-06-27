@@ -1,6 +1,4 @@
 const dns = require("dns");
-dns.setDefaultResultOrder("ipv4first");
-
 const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
@@ -13,6 +11,10 @@ const transporter = nodemailer.createTransport({
   },
   tls: {
     rejectUnauthorized: false,
+  },
+  // Force IPv4 at the socket level, bypassing global DNS order quirks
+  lookup: (hostname, options, callback) => {
+    dns.lookup(hostname, { family: 4 }, callback);
   },
 });
 
