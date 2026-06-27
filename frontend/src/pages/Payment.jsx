@@ -21,21 +21,7 @@ const authOpts = (extra = {}) => ({
   credentials: "include",
   headers: authHeaders(),
   ...extra,
-});const rupee = (n) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
-
-const authHeaders = () => {
-  const token = localStorage.getItem("adminToken");
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-};
-const authOpts = (extra = {}) => ({
-  credentials: "include",
-  headers: authHeaders(),
-  ...extra,
 });
-
 const PAYMENT_STATUS_COLORS = {
   Paid:      { bg: "#e8fdf0", text: "#0F6E56" },
   Pending:   { bg: "#FFF8E1", text: "#BA7517" },
