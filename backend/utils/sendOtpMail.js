@@ -1,26 +1,10 @@
-const dns = require("dns");
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
-  // Force IPv4 at the socket level, bypassing global DNS order quirks
-  lookup: (hostname, options, callback) => {
-    dns.lookup(hostname, { family: 4 }, callback);
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendOtpMail = async (to, otp) => {
-  await transporter.sendMail({
-    from: `"Noir Kitchen" <${process.env.GMAIL_USER}>`,
+  await resend.emails.send({
+    from: "Noir Kitchen <onboarding@resend.dev>",
     to,
     subject: "Your Noir Kitchen OTP",
     html: `
