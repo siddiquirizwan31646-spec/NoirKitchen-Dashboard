@@ -2,9 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || "siddiquirizwan31646@gmail.com";
-const CUSTOMER_SITE = "https://noirkitchen.in";
-
 const ORANGE = "#E07B39";
 
 export default function Login() {
@@ -18,11 +15,6 @@ export default function Login() {
   const handleSendOtp = async (e) => {
     e.preventDefault();
     setError("");
-    if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-      setError("Access denied. Redirecting to Noir Kitchen...");
-      setTimeout(() => { window.location.href = CUSTOMER_SITE; }, 2000);
-      return;
-    }
     setLoading(true);
     try {
       const res  = await fetch(`${API}/api/auth/send-otp`, {
@@ -32,7 +24,10 @@ export default function Login() {
         body: JSON.stringify({ email }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.message || "Failed to send OTP"); return; }
+      if (!res.ok) {
+        setError(data.message || "Failed to send OTP");
+        return;
+      }
       setStep("otp");
     } catch {
       setError("Connection error. Is the backend running?");
@@ -53,10 +48,8 @@ export default function Login() {
         body: JSON.stringify({ email, otp }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.message || "Invalid OTP"); return; }
-      if (data.user?.email !== ADMIN_EMAIL || data.user?.role !== "admin") {
-        setError("Access denied. Redirecting to Noir Kitchen...");
-        setTimeout(() => { window.location.href = CUSTOMER_SITE; }, 2000);
+      if (!res.ok) {
+        setError(data.message || "Invalid OTP");
         return;
       }
       localStorage.setItem("adminToken", data.token);
@@ -69,7 +62,6 @@ export default function Login() {
     }
   };
 
-  // Google login — redirects to backend which redirects back with token
   const handleGoogleLogin = () => {
     window.location.href = `${API}/api/auth/google`;
   };
@@ -145,14 +137,12 @@ export default function Login() {
               </Btn>
             </form>
 
-            {/* Divider */}
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <div style={{ flex: 1, height: "1px", background: "#f0ece8" }} />
               <span style={{ fontSize: "11px", color: "#bbb", fontWeight: "500" }}>or</span>
               <div style={{ flex: 1, height: "1px", background: "#f0ece8" }} />
             </div>
 
-            {/* Google Login */}
             <button
               type="button"
               onClick={handleGoogleLogin}
