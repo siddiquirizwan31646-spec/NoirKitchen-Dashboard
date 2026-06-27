@@ -10,7 +10,18 @@ const GREEN    = "#63992E";
 const GRAY     = "#888";
 
 const PAGE_SIZE = 10;
-
+const authHeaders = () => {
+  const token = localStorage.getItem("adminToken");
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+const authOpts = (extra = {}) => ({
+  credentials: "include",
+  headers: authHeaders(),
+  ...extra,
+});
 const CATEGORIES = ["chef", "waiter", "manager", "bartender", "host", "kitchen"];
 
 const CATEGORY_COLORS = {
@@ -150,12 +161,10 @@ function ChefModal({ chef, onClose, onSave, isMobile }) {
     try {
       const method = chef ? "PUT" : "POST";
       const url    = chef ? `${API}/api/chefs/${chef._id}` : `${API}/api/chefs`;
-      const r = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ ...form, experience: Number(form.experience) || 0 }),
-      });
+      const r = await fetch(url, authOpts({
+  method,
+  body: JSON.stringify({ ...form, experience: Number(form.experience) || 0 }),
+}));
       if (r.ok) { const data = await r.json(); onSave(data.chef || data); }
       else alert("Failed to save.");
     } finally { setSaving(false); }
@@ -459,7 +468,7 @@ export default function AllChefs() {
   const [showSearch, setShowSearch]         = useState(false);
 
   useEffect(() => {
-    fetch(`${API}/api/chefs`, { credentials: "include" })
+    fetch(`${API}/api/chefs`, authOpts())
       .then(r => r.ok ? r.json() : [])
       .then(data => setChefs(Array.isArray(data) ? data : data.chefs || []))
       .catch(() => {})
@@ -470,7 +479,7 @@ export default function AllChefs() {
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this staff member?")) return;
-    const r = await fetch(`${API}/api/chefs/${id}`, { method: "DELETE", credentials: "include" });
+    const r = await fetch(`${API}/api/chefs/${id}`, authOpts({ method: "DELETE" }));
     if (r.ok) setChefs(prev => prev.filter(c => c._id !== id));
   };
 
