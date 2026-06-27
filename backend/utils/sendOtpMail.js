@@ -1,10 +1,12 @@
+const dns = require("dns");
+dns.setDefaultResultOrder("ipv4first");
+
 const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 587,
   secure: false,
-  family: 4, // ← force IPv4 (fixes Render free tier)
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_PASS,
