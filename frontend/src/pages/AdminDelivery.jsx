@@ -210,13 +210,14 @@ function DeliveryCard({ d, agents, onAssign }) {
             <div style={{ fontSize: "13px", color: "#1a1a1a", lineHeight: 1.4 }}>
     {d.deliveryAddress}
 </div>
-{d.orderStatus === "Cancelled" && d.cancelReason && (
+{d.orderStatus === "Cancelled" && (d.cancelReason || d.cancelledBy) && (
     <div style={{
         fontSize: "11px", color: "#A32D2D",
         background: "#FCEBEB", padding: "6px 10px",
-        borderRadius: "6px",
+        borderRadius: "6px", display: "flex", flexDirection: "column", gap: "2px",
     }}>
-        Cancel reason: {d.cancelReason}
+        {d.cancelledBy && <span>Cancelled by: {d.cancelledBy}</span>}
+        {d.cancelReason && <span>Reason: {d.cancelReason}</span>}
     </div>
 )}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
@@ -522,9 +523,10 @@ export default function AdminDelivery() {
                                                 </td>
                                                 <td style={{ padding: "10px" }}>
     <Badge status={d.orderStatus} map={ORDER_STATUS_COLORS} />
-    {d.orderStatus === "Cancelled" && d.cancelReason && (
+    {d.orderStatus === "Cancelled" && (
         <div style={{ fontSize: "11px", color: "#A32D2D", marginTop: "4px" }}>
-            {d.cancelReason}
+            {d.cancelledBy && <div>By: {d.cancelledBy}</div>}
+            {d.cancelReason && <div>{d.cancelReason}</div>}
         </div>
     )}
 </td>
