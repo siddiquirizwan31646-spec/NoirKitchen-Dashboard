@@ -11,6 +11,20 @@ const GREEN_L = "#e8fdf0";
 
 const rupee = (n) => `₹${Number(n).toLocaleString("en-IN")}`;
 
+// ── Auth helper ──────────────────────────────────────────────────────────────
+const authHeaders = () => {
+  const token = localStorage.getItem("adminToken");
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+const authOpts = (extra = {}) => ({
+  credentials: "include",
+  headers: authHeaders(),
+  ...extra,
+});
+
 const STATUS_COLORS = {
   Placed: { bg: "#e8f4fd", text: "#185FA5" },
   Preparing: { bg: "#FFF8E1", text: "#BA7517" },
@@ -271,7 +285,7 @@ export default function OrderDetails() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    fetch(`${API}/api/orders/${orderId}`, { credentials: "include" })
+    fetch(`${API}/api/orders/${orderId}`, authOpts())
       .then((r) => {
         if (!r.ok) throw new Error("Order not found");
         return r.json();
@@ -290,8 +304,7 @@ export default function OrderDetails() {
     try {
       const r = await fetch(`${API}/api/orders/${order._id}/status`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        ...authOpts(),
         body: JSON.stringify(
           cancelReason ? { orderStatus: newStatus, cancelReason } : { orderStatus: newStatus }
         ),
@@ -398,10 +411,12 @@ export default function OrderDetails() {
           <div style={{ padding: "24px 28px" }}>
 
             {/* Status editor */}
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              {status === "Cancelled" ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
+              {(status === "Cancelled" || status === "Out for Delivery" || status === "Delivered") ? (
                 <span style={{ fontSize: "12px", color: GRAY, fontStyle: "italic" }}>
-                  Order cancelled — status locked
+                  {status === "Cancelled"
+                    ? "Order cancelled — status locked"
+                    : `Order ${status.toLowerCase()} — status locked`}
                 </span>
               ) : (
                 <>
@@ -411,10 +426,8 @@ export default function OrderDetails() {
                     disabled={saving}
                     style={{ fontSize: "12px", padding: "7px 12px", borderRadius: "8px", border: `1.5px solid ${ORANGE}`, background: "#fff", color: "#1a1a1a", fontWeight: "600", cursor: "pointer", outline: "none", opacity: saving ? 0.6 : 1 }}
                   >
-                    {ORDER_STATUSES.map((s) => (
-                      <option key={s} value={s} disabled={s === "Out for Delivery" || s === "Delivered"}>
-                        {s === "Out for Delivery" ? "Out for Delivery" : s === "Delivered" ? "Delivered" : s}
-                      </option>
+                    {ORDER_STATUSES.filter(s => s !== "Out for Delivery" && s !== "Delivered").map((s) => (
+                      <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
                   {saving && <span style={{ fontSize: "11px", color: GRAY }}>Saving…</span>}
