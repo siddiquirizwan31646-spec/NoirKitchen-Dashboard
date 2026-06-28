@@ -208,8 +208,17 @@ function DeliveryCard({ d, agents, onAssign }) {
                 <Badge status={d.orderStatus} map={ORDER_STATUS_COLORS} />
             </div>
             <div style={{ fontSize: "13px", color: "#1a1a1a", lineHeight: 1.4 }}>
-                {d.deliveryAddress}
-            </div>
+    {d.deliveryAddress}
+</div>
+{d.orderStatus === "Cancelled" && d.cancelReason && (
+    <div style={{
+        fontSize: "11px", color: "#A32D2D",
+        background: "#FCEBEB", padding: "6px 10px",
+        borderRadius: "6px",
+    }}>
+        Cancel reason: {d.cancelReason}
+    </div>
+)}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
                 {d.deliveryPartner ? (
                     <span style={{ fontSize: "12px", color: GRAY }}>
@@ -512,8 +521,13 @@ export default function AdminDelivery() {
                                                     )}
                                                 </td>
                                                 <td style={{ padding: "10px" }}>
-                                                    <Badge status={d.orderStatus} map={ORDER_STATUS_COLORS} />
-                                                </td>
+    <Badge status={d.orderStatus} map={ORDER_STATUS_COLORS} />
+    {d.orderStatus === "Cancelled" && d.cancelReason && (
+        <div style={{ fontSize: "11px", color: "#A32D2D", marginTop: "4px" }}>
+            {d.cancelReason}
+        </div>
+    )}
+</td>
                                                 <td style={{ padding: "10px", fontWeight: "600", whiteSpace: "nowrap" }}>
                                                     {rupee(d.totalAmount)}
                                                 </td>
